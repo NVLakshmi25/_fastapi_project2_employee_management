@@ -1,15 +1,38 @@
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI ,HTTPException , status , Depends
 from schemas.employee import EmployeeCreate, EmployeeResponse,EmployeeUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-from database import get_db
+from database import get_db , Base, engine
+from models.empTable import Employee
 
+# Application startup and shutdown
+@asynccontextmanager
+async def lifespan(app:FastAPI):
+    # application Startup
+    async with engine.begin() as connection:
+        await connection.execute(text("SELECT 1"))
+         # Create database tables if they do not exist
+        await connection.run_sync(
+            Base.metadata.create_all
+        )
+    print("MySQL connection successful")
+    print("Database tables checked/created!")
+        # FastAPI starts serving requests after this point
+    yield
+    
+    #shutdown
+    await engine.dispose()
+    print("Database engine disposed.")
+
+# Create FastAPI application
 app = FastAPI(
     title="Employee Management API",
     description="A beginner-friendly Employee Management System",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 # Temporary employee data
 # Here, employees is a Python list containing dictionaries. Each dictionary represents one employee.
@@ -109,6 +132,7 @@ async def create_employee(employee:EmployeeCreate):
     return  new_employee 
 
 
+# Update an employee in the temporary list
 @app.put("/employees/{employee_id}")
 async def update_employee(
     employee_id:int,
@@ -128,6 +152,8 @@ async def update_employee(
         status_code=404,
         detail="Employee not found"
     )
+    
+# Delete an employee from the temporary list
 @app.delete("/employees/{employee_id}")
 async def delete_emp(employee_id:int):
     for index, employee in enumerate(employees):

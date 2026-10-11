@@ -48,7 +48,7 @@ AsyncSessionLocal=async_sessionmaker(
 class Base(DeclarativeBase):
     pass
 
-
+# Provide a database session to API endpoints
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
